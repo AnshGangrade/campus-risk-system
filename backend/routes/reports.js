@@ -1,9 +1,10 @@
-const express  = require('express')
-const router   = express.Router()
-const jwt      = require('jsonwebtoken')
-const multer   = require('multer')
-const path     = require('path')
-const Report   = require('../models/Report')
+const express      = require('express')
+const router       = express.Router()
+const jwt          = require('jsonwebtoken')
+const multer       = require('multer')
+const path         = require('path')
+const Report       = require('../models/Report')
+const sendPushToAll = require('../utils/sendPush')
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -45,6 +46,15 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
       reportedBy: req.user.id
     })
     await report.populate('reportedBy', 'name email')
+
+    await sendPushToAll({
+      title:   '🚨 New Campus Report',
+      body:    `${title} — ${location}`,
+      url:     '/',
+      tag:     `report-${report._id}`,
+      type:    'report',
+    }).catch(console.error)
+
     res.status(201).json(report)
   } catch (err) { res.status(500).json({ message: err.message }) }
 })
@@ -68,8 +78,22 @@ router.put('/:id/upvote', protect, async (req, res) => {
 router.put('/:id/status', protect, async (req, res) => {
   try {
     const report = await Report.findByIdAndUpdate(
-      req.params.id, { status: req.body.status }, { new: true }
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
     ).populate('reportedBy', 'name email')
+
+    const statusEmoji = { pending: '⏳', 'in-progress': '🔧', resolved: '✅' }
+    const emoji = statusEmoji[req.body.status] || '📋'
+
+    await sendPushToAll({
+      title: `${emoji} Report ${req.body.status === 'resolved' ? 'Resolved' : 'Updated'}`,
+      body:  `"${report.title}" is now ${req.body.status}`,
+      url:   '/',
+      tag:   `status-${report._id}`,
+      type:  'status',
+    }).catch(console.error)
+
     res.json(report)
   } catch (err) { res.status(500).json({ message: err.message }) }
 })
@@ -81,6 +105,15 @@ router.put('/:id/assign', protect, async (req, res) => {
       { assignedDepartment: req.body.assignedDepartment },
       { new: true }
     ).populate('reportedBy', 'name email')
+
+    await sendPushToAll({
+      title: '🏢 Report Assigned',
+      body:  `"${report.title}" assigned to ${req.body.assignedDepartment}`,
+      url:   '/',
+      tag:   `assign-${report._id}`,
+      type:  'assigned',
+    }).catch(console.error)
+
     res.json(report)
   } catch (err) { res.status(500).json({ message: err.message }) }
 })
@@ -92,6 +125,17 @@ router.put('/:id/eta', protect, async (req, res) => {
       { eta: req.body.eta, etaSetAt: new Date() },
       { new: true }
     ).populate('reportedBy', 'name email')
+
+    if (req.body.eta) {
+      await sendPushToAll({
+        title: '⏱️ ETA Set',
+        body:  `"${report.title}" — expected resolution in ${req.body.eta}`,
+        url:   '/',
+        tag:   `eta-${report._id}`,
+        type:  'eta',
+      }).catch(console.error)
+    }
+
     res.json(report)
   } catch (err) { res.status(500).json({ message: err.message }) }
 })

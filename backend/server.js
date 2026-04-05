@@ -36,13 +36,10 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB error:', err))
 
-const authRoutes   = require('./routes/auth')
-const reportRoutes = require('./routes/reports')
-const adminRoutes  = require('./routes/admin')
-
-app.use('/api/auth',    authRoutes)
-app.use('/api/reports', reportRoutes)
-app.use('/api/admin',   adminRoutes)
+app.use('/api/auth',    require('./routes/auth'))
+app.use('/api/reports', require('./routes/reports'))
+app.use('/api/admin',   require('./routes/admin'))
+app.use('/api/push',    require('./routes/push'))
 
 app.use((err, req, res, next) => {
   console.error(err.stack)
