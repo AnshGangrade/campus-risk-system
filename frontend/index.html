@@ -1,16 +1,43 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/logo.jpg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campus Risk Alert</title>
-</head>
+    <title>Campus Risk Alert</title>
+    <meta name="description" content="Intelligent Campus Risk Alert and Crowd Monitoring System" />
 
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0b1120" />
 
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CampusRisk" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <!-- Android PWA -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="CampusRisk" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Campus Risk Alert" />
+    <meta property="og:description" content="Real-time campus safety monitoring" />
+    <meta property="og:type" content="website" />
+
+    <!-- Colors -->
+    <meta name="msapplication-TileColor" content="#0b1120" />
+    <meta name="msapplication-navbutton-color" content="#0b1120" />
+
+    <style>
+      html, body { background: #0b1120; margin: 0; padding: 0; }
+      #root { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

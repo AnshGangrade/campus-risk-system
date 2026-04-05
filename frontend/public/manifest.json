@@ -1,0 +1,38 @@
+{
+  "name": "Campus Risk Alert",
+  "short_name": "CampusRisk",
+  "description": "Intelligent Campus Risk Alert and Crowd Monitoring System",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0b1120",
+  "background_color": "#0b1120",
+  "categories": ["education", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Submit Report",
+      "url": "/report",
+      "description": "Submit a new hazard report"
+    },
+    {
+      "name": "Crowd Monitor",
+      "url": "/crowd",
+      "description": "View crowd heatmap"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import HomePage       from './pages/HomePage'
 import ReportPage     from './pages/ReportPage'
 import AdminDashboard from './pages/AdminDashboard'
 import CrowdMonitor   from './pages/CrowdMonitor'
+import usePushNotifications from './hooks/usePushNotifications'
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token')
@@ -15,6 +16,7 @@ const PrivateRoute = ({ children }) => {
 export default function App() {
   const [notifications, setNotifications] = useState([])
   const [openReportId,  setOpenReportId]  = useState(null)
+  const { sendNotification } = usePushNotifications()
 
   const addNotification = useCallback((type, title, message, reportId = null) => {
     setNotifications(prev => [{
@@ -23,11 +25,16 @@ export default function App() {
       time: new Date(),
       read: false,
     }, ...prev].slice(0, 30))
-  }, [])
+    sendNotification(title, message)
+  }, [sendNotification])
 
   const clearNotifications = () => setNotifications([])
 
-  const notifProps = { notifications, onClearNotifications: clearNotifications, onOpenReport: setOpenReportId }
+  const notifProps = {
+    notifications,
+    onClearNotifications: clearNotifications,
+    onOpenReport: setOpenReportId,
+  }
 
   return (
     <BrowserRouter>
