@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const cors     = require('cors')
 const dotenv   = require('dotenv')
 const path     = require('path')
+const bcrypt   = require('bcryptjs')
 
 dotenv.config()
 
@@ -32,8 +33,32 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date() }))
 app.get('/',       (req, res) => res.json({ message: 'Campus Risk Alert API' }))
 
+async function seedSuperAdmin() {
+  try {
+    const User = require('./models/User')
+    const existing = await User.findOne({ email: 'superadmin@campus.edu' })
+    if (existing) {
+      console.log('Super Admin already exists')
+      return
+    }
+    const hashed = await bcrypt.hash('SuperAdmin@2025', 12)
+    await User.create({
+      name:     'Super Admin',
+      email:    'superadmin@campus.edu',
+      password: hashed,
+      role:     'SUPER_ADMIN',
+    })
+    console.log('Super Admin created successfully')
+  } catch (err) {
+    console.error('Seed error:', err.message)
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
+  .then(async () => {
+    console.log('MongoDB connected')
+    await seedSuperAdmin()
+  })
   .catch(err => console.error('MongoDB error:', err.message))
 
 mongoose.connection.on('disconnected', () => console.warn('MongoDB disconnected — retrying...'))
