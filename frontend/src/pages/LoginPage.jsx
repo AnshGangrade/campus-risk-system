@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { Shield, Mail, Lock, User } from 'lucide-react'
 import API from '../api'
 import mit from '../assets/mit.avif'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const [isLogin, setIsLogin] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' })
+  const navigate     = useNavigate()
+  const [isLogin, setIsLogin]   = useState(true)
+  const [loading, setLoading]   = useState(false)
+  const [form, setForm]         = useState({ name: '', email: '', password: '' })
   const containerRef = useRef(null)
   const spotlightRef = useRef(null)
   const parallaxRef  = useRef(null)
@@ -18,23 +19,18 @@ export default function LoginPage() {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-
     const onMove = (e) => {
       const { clientX: x, clientY: y } = e
-      const { innerWidth: w, innerHeight: h } = window
-
       if (spotlightRef.current) {
         spotlightRef.current.style.setProperty('--x', `${x}px`)
         spotlightRef.current.style.setProperty('--y', `${y}px`)
       }
-
       if (parallaxRef.current) {
-        const dx = (x - w / 2) * 0.012
-        const dy = (y - h / 2) * 0.012
+        const dx = (x - window.innerWidth  / 2) * 0.01
+        const dy = (y - window.innerHeight / 2) * 0.01
         parallaxRef.current.style.transform = `translate(${dx}px, ${dy}px) scale(1.04)`
       }
     }
-
     el.addEventListener('mousemove', onMove)
     return () => el.removeEventListener('mousemove', onMove)
   }, [])
@@ -46,209 +42,150 @@ export default function LoginPage() {
       const endpoint = isLogin ? '/auth/login' : '/auth/register'
       const payload  = isLogin
         ? { email: form.email, password: form.password }
-        : { name: form.name, email: form.email, password: form.password, role: form.role }
+        : { name: form.name, email: form.email, password: form.password }
       const { data } = await API.post(endpoint, payload)
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
-      toast.success(isLogin ? `Welcome back, ${data.user.name}!` : 'Account created!')
-      navigate(data.user.role === 'admin' ? '/admin' : '/')
+      toast.success(isLogin ? `Welcome back, ${data.user.name}` : 'Account created')
+      const role = data.user.role
+      navigate(role === 'SUPER_ADMIN' || role === 'ADMIN' ? '/admin' : '/')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
+  }
+
+  const inputClass = "w-full rounded-xl px-4 py-3 pl-10 text-white text-sm placeholder-white/20 focus:outline-none transition-all"
+  const inputStyle = {
+    background: 'rgba(0,0,0,0.4)',
+    border: '1px solid rgba(255,255,255,0.08)',
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative min-h-screen w-full overflow-hidden flex items-center justify-center"
-      style={{ background: '#000' }}
-    >
-      {/* Layer 1 — grayscale base image */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url(${mit})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'grayscale(100%) brightness(0.45) contrast(1.1)',
-          transition: 'transform 0.15s ease-out',
-        }}
-        ref={parallaxRef}
-      />
+    <div ref={containerRef} className="relative min-h-screen w-full overflow-hidden flex" style={{ background: '#000' }}>
 
-      {/* Layer 2 — dark gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(11,17,32,0.75) 50%, rgba(0,0,0,0.85) 100%)',
-        }}
-      />
+      {/* Grayscale base */}
+      <div className="absolute inset-0"
+        style={{ backgroundImage: `url(${mit})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'grayscale(100%) brightness(0.4) contrast(1.1)', transition: 'transform 0.15s ease-out' }}
+        ref={parallaxRef} />
 
-      {/* Layer 3 — cursor spotlight (colored reveal) */}
-      <div
-        ref={spotlightRef}
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url(${mit})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          WebkitMaskImage: 'radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(0,0,0,1) 0px, rgba(0,0,0,1) 100px, rgba(0,0,0,0.35) 170px, transparent 230px)',
-          maskImage: 'radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(0,0,0,1) 0px, rgba(0,0,0,1) 100px, rgba(0,0,0,0.35) 170px, transparent 230px)',
-          '--x': '50%',
-          '--y': '50%',
-          transition: 'transform 0.15s ease-out',
-        }}
-      />
+      {/* Dark overlay */}
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.88) 0%, rgba(2,6,23,0.8) 50%, rgba(0,0,0,0.88) 100%)' }} />
 
-      {/* Main layout */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen flex">
+      {/* Color spotlight */}
+      <div ref={spotlightRef} className="absolute inset-0"
+        style={{ backgroundImage: `url(${mit})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          WebkitMaskImage: 'radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 0px, black 90px, rgba(0,0,0,0.3) 160px, transparent 220px)',
+          maskImage: 'radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 0px, black 90px, rgba(0,0,0,0.3) 160px, transparent 220px)',
+          '--x': '50%', '--y': '50%' }} />
 
-        {/* Left panel — text */}
+      <div className="relative z-10 w-full flex">
+
+        {/* Left panel */}
         <div className="hidden lg:flex flex-1 flex-col justify-between p-14">
-          {/* Brand */}
-          <div className="fade-in flex items-center gap-3">
-            <img src={mit} alt="campus" className="w-9 h-9 rounded-xl object-cover border border-white/20" />
-            <span className="text-white/80 font-medium text-sm tracking-wide">Campus Risk Alert</span>
+          <div className="flex items-center gap-3 fade-in">
+            <img src={mit} alt="campus" className="w-8 h-8 rounded-lg object-cover border border-white/20" />
+            <span className="text-white/70 text-sm tracking-wider">CAMPUS RISK ALERT</span>
           </div>
 
-          {/* Hero text */}
           <div className="fade-in" style={{ animationDelay: '0.1s' }}>
-            <p className="text-white/40 text-sm font-medium tracking-[0.2em] uppercase mb-4">
-              Safety Intelligence System
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <Shield size={16} className="text-violet-400" />
+              <span className="text-violet-400 text-xs tracking-[0.2em] uppercase">Safety Intelligence System</span>
+            </div>
             <h1 className="text-6xl font-bold text-white leading-[1.1] mb-6">
               Campus<br />
-              <span style={{ color: '#818cf8' }}>Risk</span><br />
+              <span className="text-violet-400">Risk</span><br />
               Alert
             </h1>
-            <div className="w-12 h-0.5 bg-indigo-500 mb-6"></div>
-            <div className="space-y-3 max-w-xs">
+            <div className="w-10 h-0.5 bg-violet-600 mb-8"></div>
+            <div className="space-y-3">
               {[
                 'Real-time campus hazard reporting',
-                'Crowd monitoring heatmaps',
+                'Crowd monitoring and heatmaps',
                 'Smart analytics for administrators',
+                'Role-based access control',
               ].map((text, i) => (
-                <div key={i} className="flex items-center gap-3 fade-in" style={{ animationDelay: `${0.2 + i * 0.1}s` }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
-                  <p className="text-white/60 text-sm">{text}</p>
+                <div key={i} className="flex items-center gap-3 fade-in" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
+                  <div className="w-1 h-1 rounded-full bg-violet-500 flex-shrink-0"></div>
+                  <p className="text-white/50 text-sm">{text}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-white/20 text-xs tracking-widest uppercase fade-in">
-            Intelligent Campus Monitoring
+          <p className="text-white/15 text-xs tracking-widest uppercase">
+            Intelligent Campus Monitoring System
           </p>
         </div>
 
-        {/* Right panel — glass login card */}
-        <div className="flex-1 lg:max-w-[440px] flex items-center justify-center px-6 py-12">
+        {/* Right panel */}
+        <div className="flex-1 lg:max-w-[420px] flex items-center justify-center px-6 py-12 min-h-screen">
           <div className="w-full max-w-sm">
 
-            {/* Mobile brand */}
-            <div className="lg:hidden text-center mb-8 fade-in">
-              <img src={mit} alt="campus" className="w-20 h-20 rounded-2xl object-cover mx-auto mb-3 border border-white/20" />
-              <h1 className="text-2xl font-bold text-white">Campus Risk Alert</h1>
-              <p className="text-white/40 text-sm mt-1">Safety Intelligence System</p>
+            <div className="lg:hidden text-center mb-8">
+              <img src={mit} alt="campus" className="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border border-white/20" />
+              <h1 className="text-xl font-bold text-white">Campus Risk Alert</h1>
             </div>
 
-            {/* Glass card */}
-            <div
-              className="rounded-3xl p-8 fade-in"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 0 40px rgba(99,102,241,0.15), inset 0 1px 0 rgba(255,255,255,0.08)',
-              }}
-            >
-              <h2 className="text-xl font-semibold text-white mb-1">
-                {isLogin ? 'Welcome back' : 'Create account'}
+            <div className="rounded-2xl p-8 fade-in"
+              style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                boxShadow: '0 0 40px rgba(124,58,237,0.12), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+
+              <h2 className="text-lg font-semibold text-white mb-1">
+                {isLogin ? 'Sign in' : 'Create account'}
               </h2>
-              <p className="text-white/40 text-sm mb-6">
-                {isLogin ? 'Sign in to your campus account' : 'Join the campus safety network'}
+              <p className="text-white/30 text-xs mb-6 tracking-wide">
+                {isLogin ? 'Access your campus dashboard' : 'Join the campus safety network'}
               </p>
 
-              {/* Toggle */}
-              <div
-                className="flex p-1 mb-6 rounded-xl"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                {['Login', 'Register'].map((label, i) => (
-                  <button
-                    key={label}
-                    onClick={() => setIsLogin(i === 0)}
-                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+              <div className="flex p-1 mb-6 rounded-xl" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {['Sign In', 'Register'].map((label, i) => (
+                  <button key={label} onClick={() => setIsLogin(i === 0)}
+                    className="flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all"
                     style={{
-                      background: isLogin === (i === 0) ? '#4f46e5' : 'transparent',
-                      color: isLogin === (i === 0) ? '#fff' : 'rgba(255,255,255,0.4)',
-                    }}
-                  >{label}</button>
+                      background: isLogin === (i === 0) ? '#7c3aed' : 'transparent',
+                      color: isLogin === (i === 0) ? '#fff' : 'rgba(255,255,255,0.3)',
+                    }}>{label}</button>
                 ))}
               </div>
 
               <form onSubmit={submit} className="space-y-4">
                 {!isLogin && (
-                  <div>
-                    <label className="block text-xs text-white/40 mb-1.5 font-medium tracking-wide">Full Name</label>
-                    <input
-                      name="name" value={form.name} onChange={handle} required={!isLogin}
-                      placeholder="Your full name"
-                      className="w-full rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none transition-colors"
-                      style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}
-                      onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.6)'}
-                      onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-                    />
+                  <div className="relative">
+                    <User size={14} className="absolute left-3.5 top-3.5 text-white/25" />
+                    <input name="name" value={form.name} onChange={handle} required={!isLogin}
+                      placeholder="Full name"
+                      className={inputClass} style={inputStyle}
+                      onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                      onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
                   </div>
                 )}
-                <div>
-                  <label className="block text-xs text-white/40 mb-1.5 font-medium tracking-wide">Email Address</label>
-                  <input
-                    name="email" type="email" value={form.email} onChange={handle} required
-                    placeholder="you@campus.edu"
-                    className="w-full rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none transition-colors"
-                    style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.6)'}
-                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-                  />
+                <div className="relative">
+                  <Mail size={14} className="absolute left-3.5 top-3.5 text-white/25" />
+                  <input name="email" type="email" value={form.email} onChange={handle} required
+                    placeholder="Email address"
+                    className={inputClass} style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
                 </div>
-                <div>
-                  <label className="block text-xs text-white/40 mb-1.5 font-medium tracking-wide">Password</label>
-                  <input
-                    name="password" type="password" value={form.password} onChange={handle} required
-                    placeholder="••••••••"
-                    className="w-full rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none transition-colors"
-                    style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.6)'}
-                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-                  />
+                <div className="relative">
+                  <Lock size={14} className="absolute left-3.5 top-3.5 text-white/25" />
+                  <input name="password" type="password" value={form.password} onChange={handle} required
+                    placeholder="Password"
+                    className={inputClass} style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
                 </div>
-                {!isLogin && (
-                  <div>
-                    <label className="block text-xs text-white/40 mb-1.5 font-medium tracking-wide">Role</label>
-                    <select
-                      name="role" value={form.role} onChange={handle}
-                      className="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors"
-                      style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      <option value="user">Student / Staff</option>
-                      <option value="admin">Administrator</option>
-                    </select>
-                  </div>
-                )}
-                <button
-                  type="submit" disabled={loading}
-                  className="w-full text-white font-medium py-3 rounded-xl transition-all mt-2 disabled:opacity-50"
-                  style={{
-                    background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                    boxShadow: '0 4px 24px rgba(99,102,241,0.35)',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 32px rgba(99,102,241,0.55)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 24px rgba(99,102,241,0.35)'}
-                >
+
+                <button type="submit" disabled={loading}
+                  className="w-full py-3 rounded-xl text-white text-sm font-semibold tracking-wide transition-all disabled:opacity-50 mt-2"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                    boxShadow: '0 4px 20px rgba(124,58,237,0.3)' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 28px rgba(124,58,237,0.5)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(124,58,237,0.3)'}>
                   {loading
                     ? <span className="flex items-center justify-center gap-2">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -258,11 +195,13 @@ export default function LoginPage() {
                   }
                 </button>
               </form>
-            </div>
 
-            <p className="text-center text-white/15 text-xs mt-6 tracking-widest uppercase">
-              Campus Risk Alert System
-            </p>
+              {isLogin && (
+                <p className="text-center text-white/20 text-xs mt-4">
+                  Contact your administrator for admin access
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

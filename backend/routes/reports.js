@@ -1,25 +1,16 @@
-const express      = require('express')
-const router       = express.Router()
-const jwt          = require('jsonwebtoken')
-const multer       = require('multer')
-const path         = require('path')
-const Report       = require('../models/Report')
+const express       = require('express')
+const router        = express.Router()
+const multer        = require('multer')
+const path          = require('path')
+const Report        = require('../models/Report')
 const sendPushToAll = require('../utils/sendPush')
+const { protect, adminOnly } = require('../middleware/auth')
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename:    (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 })
-const upload = multer({ storage })
-
-const protect = (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1]
-    if (!token) return res.status(401).json({ message: 'Not authorized' })
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
-    next()
-  } catch { res.status(401).json({ message: 'Invalid token' }) }
-}
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } })
 
 router.get('/', async (req, res) => {
   try {
@@ -29,10 +20,12 @@ router.get('/', async (req, res) => {
     if (status)   filter.status   = status
     if (severity) filter.severity = severity
     const reports = await Report.find(filter)
-      .populate('reportedBy', 'name email')
+      .populate('reportedBy', 'name email avatar role')
       .sort({ upvoteCount: -1, createdAt: -1 })
     res.json(reports)
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 router.post('/', protect, upload.single('image'), async (req, res) => {
@@ -41,22 +34,23 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
     const image = req.file ? `/uploads/${req.file.filename}` : ''
     const report = await Report.create({
       title, description, category, severity, location, image,
-      latitude:  parseFloat(latitude)  || 18.5204,
-      longitude: parseFloat(longitude) || 73.8567,
-      reportedBy: req.user.id
+      latitude:   parseFloat(latitude)  || 18.5204,
+      longitude:  parseFloat(longitude) || 73.8567,
+      reportedBy: req.user.id,
     })
-    await report.populate('reportedBy', 'name email')
+    await report.populate('reportedBy', 'name email avatar role')
 
-    await sendPushToAll({
-      title:   '🚨 New Campus Report',
-      body:    `${title} — ${location}`,
-      url:     '/',
-      tag:     `report-${report._id}`,
-      type:    'report',
-    }).catch(console.error)
+    sendPushToAll({
+      title: 'New Campus Report',
+      body:  `${title} — ${location}`,
+      url:   '/',
+      tag:   `report-${report._id}`,
+    }).catch(() => {})
 
     res.status(201).json(report)
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 router.put('/:id/upvote', protect, async (req, res) => {
@@ -72,7 +66,9 @@ router.put('/:id/upvote', protect, async (req, res) => {
     report.upvoteCount = report.upvotes.length
     await report.save()
     res.json({ upvoteCount: report.upvoteCount, upvoted: !already })
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 router.put('/:id/status', protect, async (req, res) => {
@@ -81,21 +77,20 @@ router.put('/:id/status', protect, async (req, res) => {
       req.params.id,
       { status: req.body.status },
       { new: true }
-    ).populate('reportedBy', 'name email')
+    ).populate('reportedBy', 'name email avatar role')
 
-    const statusEmoji = { pending: '⏳', 'in-progress': '🔧', resolved: '✅' }
-    const emoji = statusEmoji[req.body.status] || '📋'
-
-    await sendPushToAll({
-      title: `${emoji} Report ${req.body.status === 'resolved' ? 'Resolved' : 'Updated'}`,
-      body:  `"${report.title}" is now ${req.body.status}`,
+    const emoji = { pending: 'Pending', 'in-progress': 'In Progress', resolved: 'Resolved' }
+    sendPushToAll({
+      title: `Report ${req.body.status === 'resolved' ? 'Resolved' : 'Updated'}`,
+      body:  `"${report.title}" is now ${emoji[req.body.status] || req.body.status}`,
       url:   '/',
       tag:   `status-${report._id}`,
-      type:  'status',
-    }).catch(console.error)
+    }).catch(() => {})
 
     res.json(report)
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 router.put('/:id/assign', protect, async (req, res) => {
@@ -104,18 +99,19 @@ router.put('/:id/assign', protect, async (req, res) => {
       req.params.id,
       { assignedDepartment: req.body.assignedDepartment },
       { new: true }
-    ).populate('reportedBy', 'name email')
+    ).populate('reportedBy', 'name email avatar role')
 
-    await sendPushToAll({
-      title: '🏢 Report Assigned',
+    sendPushToAll({
+      title: 'Report Assigned',
       body:  `"${report.title}" assigned to ${req.body.assignedDepartment}`,
       url:   '/',
       tag:   `assign-${report._id}`,
-      type:  'assigned',
-    }).catch(console.error)
+    }).catch(() => {})
 
     res.json(report)
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 router.put('/:id/eta', protect, async (req, res) => {
@@ -124,27 +120,41 @@ router.put('/:id/eta', protect, async (req, res) => {
       req.params.id,
       { eta: req.body.eta, etaSetAt: new Date() },
       { new: true }
-    ).populate('reportedBy', 'name email')
+    ).populate('reportedBy', 'name email avatar role')
 
     if (req.body.eta) {
-      await sendPushToAll({
-        title: '⏱️ ETA Set',
-        body:  `"${report.title}" — expected resolution in ${req.body.eta}`,
+      sendPushToAll({
+        title: 'ETA Set',
+        body:  `"${report.title}" expected in ${req.body.eta}`,
         url:   '/',
         tag:   `eta-${report._id}`,
-        type:  'eta',
-      }).catch(console.error)
+      }).catch(() => {})
     }
 
     res.json(report)
-  } catch (err) { res.status(500).json({ message: err.message }) }
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
+// Role-based delete
 router.delete('/:id', protect, async (req, res) => {
   try {
+    const report = await Report.findById(req.params.id)
+    if (!report) return res.status(404).json({ message: 'Report not found' })
+
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role)
+    const isOwner = report.reportedBy.toString() === req.user.id
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Not allowed to delete this report' })
+    }
+
     await Report.findByIdAndDelete(req.params.id)
-    res.json({ message: 'Deleted' })
-  } catch (err) { res.status(500).json({ message: err.message }) }
+    res.json({ message: 'Report deleted' })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
 })
 
 module.exports = router
